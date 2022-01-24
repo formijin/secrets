@@ -1,88 +1,117 @@
 require('dotenv').config();
 const express = require ("express");
-const bodyparser = require("body-parser");
-const ejs = require("ejs");
+// const ejs = require("ejs");
 const mongoose = require("mongoose");
-const encrypt = require('mongoose-encryption');
+const session = require('express-session');
+const passport = require ("passport");
+const bcrypt = require ("bcrypt");
+const MongoStore = require('connect-mongo');
+const isAuth = require ("./routes/authMiddleware").isAuth;
+const GoogleStrategy = require( 'passport-google-oauth2' ).Strategy;
+const findOrCreate = require('mongoose-findorcreate');
 
 
 
 
-const app = express();
+ // DB config
+ const db = require("./config/keys").MongoURI;
 
+ // connect to Mongo
+ mongoose.connect(db,function (err) {
+     if (!err){
+         console.log("DB connection successful");
+     }else{
+         console.log(err);
+     }
+ });
 
-app
-.use (express.static("public"))
-.use (bodyparser.urlencoded({
-    extended: true
-}))
-.set ("view engine", "ejs")
+// Load user model
+const User = require ("./models/users");
+ 
 
-mongoose.connect("mongodb://localhost:27017/userDB", {useNewUrlParser: true});
+ const app = express();
 
-const userSchema = new mongoose.Schema({
-    email: {
-        type : "String",
-        required: true
-    },
-    password: {
-        type : "String",
-        required: true,
+ app
+ .use (express.static("public"))
+ .use (express.urlencoded({extended: false}))
+ .set ("view engine", "ejs")
+ .use(session({
+    secret: process.env.SECRET,
+    resave: false,
+    saveUninitialized: true,
+    store: MongoStore.create({ mongoUrl:db }),
+    cookie:{
+        maxAge:100*60*60*24
     }
-});
+ }));
 
+// passport middleware
+app
+.use(passport.initialize())
+.use(passport.session());
 
-userSchema.plugin(encrypt, {secret: process.env.SECRET, encryptedFields: ['password']});
-
-const User = new mongoose.model("user",userSchema);
-
-app.get("/", function (req, res) { 
-    res.render("home");
-});
-
-
-app.get("/login", function (req, res) { 
-    res.render("login");
-});
-
-
-app.post("/login", function (req,res) {  
-   
-    User.findOne({email: req.body.email}, function(err,result){
-        
-        if (!err) {
-            if (result) {
-                if (result.password === req.body.password) {
-                    res.render("secrets");
-                }else{
-                    res.send("Invalid password");
-                } 
-            }else{
-                res.send("Invalid user");
-            }
-        } else {
-            console.log(err);
-        }
-
+//----google oauth2 strategy--------
+passport.use(new GoogleStrategy({
+    clientID: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    callbackURL: "http://localhost:3000/auth/google/secrets"
+  },
+  function(accessToken, refreshToken, profile, cb) {
+      console.log(profile);
+    User.findOrCreate({ googleId: profile.id }, function (err, user) {
+      return cb(err, user);
     });
+  }
+));
 
+// introducing passport config
+require("./config/passport")(passport);
+
+
+
+// Routes
+
+app.use("/", require ("./routes/index"));
+app.use("/users", require ("./routes/users"));
+
+app.get("/secrets",isAuth, function (req,res){
+    
+    res.render("secrets");
+    
 });
 
+app.get("/auth/google", passport.authenticate('google', { scope: ['profile'] }));
 
-app.get("/register", function (req, res) { 
-    res.render("register");
-});
+app.get("/auth/google/secrets", 
+  passport.authenticate('google', { failureRedirect: '/login' }),
+  function(req, res) {
+    // Successful authentication, redirect home.
+    res.redirect('/secrets');
+  });
 
-app.post("/register", function (req,res) {  
-   const newUser = new User(req.body)
-    newUser.save( function (err, result) { 
-        if(!err){
-            res.render("secrets");
-        }else{
-            res.send(err)
-        }
-     })
-})
+
+// app.get("/register", function (req, res) { 
+//    res.render("register");
+  
+// });
+
+// app.post("/register", function (req,res) {  
+
+//    User.register({username: req.body.username}, req.body.password, function(err,user){
+//        if(err){
+//            console.log(err);
+//            res.redirect("/register");
+//        }else{
+           
+//            passport.authenticate("local"), (function(req,res){
+//                console.log(req.user);
+//                res.redirect("/secrets");
+            
+//            });
+//        }
+//    });
+    
+// });
 
 let port = process.env.PORT;
 
@@ -91,5 +120,5 @@ if( port == null || port == ""){
 }
 
 app.listen(port,function () { 
-    console.log("Server started succesfully");
- })
+    console.log("Server started succesfully on "+ port);
+ });
