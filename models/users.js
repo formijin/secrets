@@ -2,18 +2,9 @@ const mongoose = require ("mongoose");
 const findOrCreate = require('mongoose-findorcreate');
 
 const UserSchema = new mongoose.Schema({
-    name : {
-        type : String
-        
-    },
-    email : {
-        type : String
-        
-    },
-    password : {
-        type : String
-        
-    },
+    name : String,
+    email : String,
+    password : String,
     date : {
         type : Date,
         default: Date.now
@@ -21,7 +12,7 @@ const UserSchema = new mongoose.Schema({
     googleId: String
 });
 
-UserSchema.plugin(findOrCreate)
+// UserSchema.plugin(findOrCreate)
 
 const User =  mongoose.model ("User", UserSchema)
 

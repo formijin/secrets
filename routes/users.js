@@ -2,6 +2,7 @@ const express = require ("express");
 const router = express.Router();
 const bcrypt = require ("bcrypt");
 const passport = require ("passport");
+const isAuth = require ("./authMiddleware").isAuth;
 
 // Define model
 const User = require("../models/users");
@@ -14,9 +15,13 @@ router.get ("/login", function (req, res) {
 });
 
 router.post ("/login", passport.authenticate("local",{ 
-        successRedirect: '/secrets',
+        successRedirect: '/users/secrets',
         failureRedirect: '/users/login' 
-    }));
+    })
+);
+
+router.get("/auth/google", passport.authenticate('google', { scope: ['profile'] }));
+
 
 //------------------------------------Registration page---------------------------------
 
@@ -55,10 +60,24 @@ router.post ( "/register", function (req, res) {
 
 });
 
-// --------logout -------------
+// -------------------------logout ---------------------------
 router.get("/logout", function (req,res,next) {
     req.logout();
     res.redirect('/');
 })
+
+// --------------------------Secrets---------------------------
+router.get("/secrets",(req,res,next)=>{ console.log(req.session);next();}, isAuth, function (req,res){
+    
+    res.render("secrets");
+    
+});
+
+router.get("/auth/google/secrets", 
+  passport.authenticate('google', { failureRedirect: '/login' }),
+  function(req, res) {
+    // Successful authentication, redirect home.
+    res.redirect('/users/secrets');
+  });
 
 module.exports = router
