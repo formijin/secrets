@@ -6,6 +6,7 @@ const session = require('express-session');
 const passport = require ("passport");
 const bcrypt = require ("bcrypt");
 const MongoStore = require('connect-mongo');
+const isAuth = require ("./routes/authMiddleware").isAuth;
 
 
 
@@ -45,7 +46,7 @@ app
 .use(passport.session());
 
 //----- importing passport-local startegy config-------
-require("./config/passport").local(passport);
+require("./config/passport")(passport);
 
 //----importing oauth2 strategy config--------
 // require("./config/passport").google(passport);
@@ -58,6 +59,7 @@ require("./config/passport").local(passport);
 
 app.use("/", require ("./routes/index"));
 app.use("/users", require ("./routes/users"));
+app.use("/secrets",isAuth, require ("./routes/secrets"));
 
 
 

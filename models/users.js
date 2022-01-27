@@ -9,10 +9,11 @@ const UserSchema = new mongoose.Schema({
         type : Date,
         default: Date.now
     },
-    googleId: String
+    googleId: String,
+    facebookId: String
 });
 
-// UserSchema.plugin(findOrCreate)
+UserSchema.plugin(findOrCreate)
 
 const User =  mongoose.model ("User", UserSchema)
 

@@ -7,7 +7,7 @@ const isAuth = require ("./authMiddleware").isAuth;
 // Define model
 const User = require("../models/users");
 
-// -------------------------------login page--------------------------------
+// -------------------------------login--------------------------------
 
 router.get ("/login", function (req, res) { 
     
@@ -15,12 +15,33 @@ router.get ("/login", function (req, res) {
 });
 
 router.post ("/login", passport.authenticate("local",{ 
-        successRedirect: '/users/secrets',
+        successRedirect: '/secrets',
         failureRedirect: '/users/login' 
     })
 );
 
+
+
+// ---------------JWT login/register-----------------------------------------------
+
 router.get("/auth/google", passport.authenticate('google', { scope: ['profile'] }));
+
+router.get('/auth/facebook', passport.authenticate('facebook'));
+
+router.get("/auth/google/secrets", 
+passport.authenticate('google', { failureRedirect: '/users/login' }),
+function(req, res) {
+    // Successful authentication, redirect home.
+    res.redirect('/secrets');
+});
+
+router.get("/auth/facebook/secrets", 
+    passport.authenticate("facebook", { failureRedirect: "/users/login" }),
+    function(req, res) {
+        // Successful authentication, redirect home.
+        res.redirect("/secrets");
+});
+
 
 
 //------------------------------------Registration page---------------------------------
@@ -60,24 +81,16 @@ router.post ( "/register", function (req, res) {
 
 });
 
+
+
 // -------------------------logout ---------------------------
 router.get("/logout", function (req,res,next) {
     req.logout();
     res.redirect('/');
 })
 
-// --------------------------Secrets---------------------------
-router.get("/secrets",(req,res,next)=>{ console.log(req.session);next();}, isAuth, function (req,res){
-    
-    res.render("secrets");
-    
-});
 
-router.get("/auth/google/secrets", 
-  passport.authenticate('google', { failureRedirect: '/login' }),
-  function(req, res) {
-    // Successful authentication, redirect home.
-    res.redirect('/users/secrets');
-  });
+
+
 
 module.exports = router
